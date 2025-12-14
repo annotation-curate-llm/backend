@@ -1,16 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.api.v1.api import api_router
-from app.core.database import engine, Base
+from app.config import settings
+from app.routes import auth, users, projects, tasks, annotations
+from app.database import engine, Base
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    debug=settings.DEBUG
 )
 
 # CORS
@@ -22,17 +22,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR)
+# Include routers
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(projects.router)
+app.include_router(tasks.router)
+app.include_router(annotations.router)
 
 @app.get("/")
 def root():
     return {
-        "message": "Annotation Platform API",
-        "version": settings.VERSION,
-        "docs": "/docs"
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "running"
     }
 
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
