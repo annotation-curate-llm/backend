@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import auth, users, projects, tasks, annotations
+from app.routes import auth, users, projects, tasks, annotations, reviews, exports
 from app.database import engine, Base
 
 # Create database tables
@@ -28,6 +28,8 @@ app.include_router(users.router)
 app.include_router(projects.router)
 app.include_router(tasks.router)
 app.include_router(annotations.router)
+app.include_router(reviews.router)
+app.include_router(exports.router)
 
 @app.get("/")
 def root():
