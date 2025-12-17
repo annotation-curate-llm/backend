@@ -1,6 +1,6 @@
 from supabase import create_client, Client
 from fastapi import UploadFile
-from app.config import settings
+from app.core.config import settings
 import uuid
 from typing import Dict
 

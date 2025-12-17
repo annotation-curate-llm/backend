@@ -1,6 +1,6 @@
 import httpx
 from typing import Dict, Any, Optional
-from app.config import settings
+from app.core.config import settings
 
 class LabelStudioService:
     def __init__(self):
