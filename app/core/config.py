@@ -3,25 +3,35 @@ from typing import List
 
 class Settings(BaseSettings):
     # App
-    PROJECT_NAME: str = "Annotation Platform API"
-    VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
-    
+    APP_NAME: str = "Annotation Platform API"
+    APP_VERSION: str = "1.0.0"
+    DEBUG: bool = False
+    ENVIRONMENT: str = "production"
+
     # Database
-    DATABASE_URL: str = "postgresql://annotation_user:annotation_pass@localhost:5432/annotation_db"
-    
-    # Security
-    SECRET_KEY: str = "your-secret-key-change-this"
-    ALGORITHM: str = "HS256"
+    DATABASE_URL: str
+
+    # Supabase
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
+    SUPABASE_SERVICE_KEY: str
+
+    # JWT
+    JWT_SECRET: str
+    JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
+
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
-    
+    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+
     # Label Studio
     LABEL_STUDIO_URL: str = "http://localhost:8080"
-    LABEL_STUDIO_API_TOKEN: str = ""
-    
+    LABEL_STUDIO_API_KEY: str
+
+    # Storage
+    STORAGE_BUCKET: str = "annotation-assets"
+    MAX_FILE_SIZE: int = 10485760  # 10MB
+
     class Config:
         env_file = ".env"
         case_sensitive = True

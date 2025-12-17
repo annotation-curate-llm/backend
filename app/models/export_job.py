@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 import enum
-from app.database import Base
+from app.core.database import Base
 
 class ExportFormat(str, enum.Enum):
     JSON = "json"

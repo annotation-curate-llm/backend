@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
-from app.database import Base
+from app.core.database import Base
 
 class Project(Base):
     __tablename__ = "projects"
