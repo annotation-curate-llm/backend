@@ -4,7 +4,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy import DateTime
 import uuid
-from app.database import Base
+from app.core.database import Base
 
 class Asset(Base):
     __tablename__ = "assets"
