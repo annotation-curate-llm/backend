@@ -16,10 +16,15 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str
     SUPABASE_SERVICE_KEY: str
 
-    # JWT
+    # JWT (You already have this! Just add SECRET_KEY as an alias)
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    # Add this property to use JWT_SECRET as SECRET_KEY (for compatibility)
+    @property
+    def SECRET_KEY(self) -> str:
+        return self.JWT_SECRET
 
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]

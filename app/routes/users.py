@@ -9,31 +9,38 @@ from app.schemas.user import UserResponse, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
+
 @router.get("/me", response_model=UserResponse)
 def get_current_user_info(current_user: User = Depends(get_current_user)):
-    """Get current user information"""
+    """Get current user information - any authenticated user can access"""
     return current_user
+
 
 @router.get("/", response_model=List[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    _role_check = Depends(require_role([UserRole.ADMIN]))
+    current_user: User = Depends(require_role([UserRole.ADMIN]))  
 ):
     """List all users (admin only)"""
+    print(f"Admin {current_user.email} is listing users")
     users = db.query(User).all()
     return users
+
 
 @router.patch("/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: str,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    _role_check = Depends(require_role([UserRole.ADMIN]))
+    current_user: User = Depends(require_role([UserRole.ADMIN])) 
 ):
     """Update user (admin only)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Optional: Track who made the change
+    # user.updated_by = current_user.id
     
     for key, value in user_update.model_dump(exclude_unset=True).items():
         setattr(user, key, value)

@@ -19,21 +19,30 @@ def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _role_check = Depends(require_role([UserRole.ADMIN]))
+    _admin: User = Depends(require_role([UserRole.ADMIN]))
 ):
     """Create new project (admin only)"""
-    # Create project in Label Studio
-    ls_service = LabelStudioService()
-    ls_project = ls_service.create_project(
-        title=project_data.name,
-        label_config=project_data.label_config
-    )
+    
+    label_studio_project_id = None
+    
+    # Try to create in Label Studio (optional)
+    try:
+        ls_service = LabelStudioService()
+        ls_project = ls_service.create_project(
+            title=project_data.name,
+            label_config=project_data.label_config
+        )
+        label_studio_project_id = ls_project.get("id")
+    except Exception as e:
+        # Log the error but continue
+        print(f"Warning: Could not create Label Studio project: {e}")
+        print("Creating project without Label Studio integration")
     
     # Create project in database
     new_project = Project(
         **project_data.model_dump(),
         created_by=current_user.id,
-        label_studio_project_id=ls_project.get("id")
+        label_studio_project_id=label_studio_project_id
     )
     db.add(new_project)
     db.commit()

@@ -43,6 +43,22 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+@app.get("/debug/routes")
+def list_all_routes():
+    """List all registered API endpoints"""
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "methods"):
+            routes.append({
+                "path": route.path,
+                "name": route.name,
+                "methods": sorted(list(route.methods))
+            })
+    return {
+        "total": len(routes),
+        "routes": sorted(routes, key=lambda x: x['path'])
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

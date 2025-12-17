@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundException
 
 
 class AuthService:
@@ -39,13 +39,13 @@ class AuthService:
     def get_user_by_id(self, user_id: str) -> User:
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise NotFoundError("User not found")
+            raise NotFoundException("User not found")
         return user
 
     def get_user_by_email(self, email: str) -> User:
         user = self.db.query(User).filter(User.email == email).first()
         if not user:
-            raise NotFoundError("User not found")
+            raise NotFoundException("User not found")
         return user
 
     def update_user_role(self, user_id: str, role: UserRole) -> User:
