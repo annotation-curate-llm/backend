@@ -1,9 +1,10 @@
-from sqlalchemy import Column,  DateTime, Integer, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, DateTime, Integer, ForeignKey, Enum as SQLEnum, Index, event
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
 import enum
+from datetime import datetime
 from app.core.database import Base
 
 class TaskStatus(str, enum.Enum):
@@ -27,9 +28,21 @@ class Task(Base):
     started_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     asset = relationship("Asset", back_populates="tasks")
     project = relationship("Project", back_populates="tasks")
     annotations = relationship("Annotation", back_populates="task", cascade="all, delete-orphan")
+    
+    # Add indices for frequent queries
+    __table_args__ = (
+        Index('ix_task_assigned_status', 'assigned_to', 'status'),
+        Index('ix_task_project_status', 'project_id', 'status'),
+        Index('ix_task_priority', 'priority'),
+    )
+
+# Auto-update updated_at timestamp
+@event.listens_for(Task, 'before_update')
+def receive_before_update(mapper, connection, target):
+    target.updated_at = datetime.utcnow()
