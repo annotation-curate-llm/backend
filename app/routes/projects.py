@@ -11,6 +11,9 @@ from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, ProjectWithStats
 from app.services.label_studio_service import LabelStudioService
+from fastapi import UploadFile, File
+from app.services.storage_service import StorageService
+from app.models.asset import Asset
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -85,6 +88,38 @@ def get_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+@router.post("/{project_id}/assets/upload", status_code=status.HTTP_201_CREATED)
+async def upload_asset(
+    project_id: UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _role_check = Depends(require_role([UserRole.ADMIN]))
+):
+    """Upload asset to project"""
+    # Verify project exists
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Upload to Supabase
+    storage_service = StorageService()
+    file_data = await storage_service.upload_file(file, str(project_id))
+    
+    # Create asset record
+    asset = Asset(
+        project_id=project_id,
+        file_url=file_data["file_url"],
+        file_name=file_data["file_name"],
+        mime_type=file_data["mime_type"],
+        uploaded_by=current_user.id
+    )
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+    
+    return {"message": "Asset uploaded", "asset_id": str(asset.id), "file_url": file_data["file_url"]}
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
 def update_project(

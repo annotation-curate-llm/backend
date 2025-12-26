@@ -256,9 +256,9 @@ def get_project_tasks(
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _role_check = Depends(require_role([UserRole.ADMIN, UserRole.MANAGER]))
+    _role_check = Depends(require_role([UserRole.ADMIN]))
 ):
-    """Get all tasks for a project (admin/manager only)"""
+    """Get all tasks for a project (admin only)"""
     task_service = TaskService(db)
     tasks = task_service.get_project_tasks(
         project_id=project_id,
