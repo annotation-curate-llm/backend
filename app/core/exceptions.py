@@ -1,5 +1,8 @@
 from fastapi import HTTPException, status
 
+class ExternalServiceError(Exception):
+    """Raised when external service (Label Studio) fails"""
+    pass
 
 class AppException(Exception):
     """Base class for all application exceptions"""
