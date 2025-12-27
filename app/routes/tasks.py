@@ -67,15 +67,26 @@ def get_my_tasks(
             continue
         
         result.append(
-            TaskWithAsset(
-                **task.__dict__,
-                asset=AssetInfo(
-                    file_url=task.asset.file_url,
-                    file_name=task.asset.file_name,
-                    mime_type=task.asset.mime_type
-                )
+        TaskWithAsset(
+            id=task.id,
+            asset_id=task.asset_id,
+            project_id=task.project_id,
+            assigned_to=task.assigned_to,
+            status=task.status,
+            label_studio_task_id=task.label_studio_task_id,
+            priority=task.priority,
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            assigned_at=task.assigned_at,
+            started_at=task.started_at,
+            completed_at=task.completed_at,
+            asset=AssetInfo(
+                file_url=task.asset.file_url,
+                file_name=task.asset.file_name,
+                mime_type=task.asset.mime_type
             )
         )
+    )
     
     return result
 
@@ -103,7 +114,18 @@ def get_next_task(
         )
     
     return TaskWithAsset(
-        **task.__dict__,
+        id=task.id,
+        asset_id=task.asset_id,
+        project_id=task.project_id,
+            assigned_to=task.assigned_to,
+        status=task.status,
+        label_studio_task_id=task.label_studio_task_id,
+        priority=task.priority,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+        assigned_at=task.assigned_at,
+        started_at=task.started_at,
+        completed_at=task.completed_at,
         asset=AssetInfo(
             file_url=task.asset.file_url,
             file_name=task.asset.file_name,

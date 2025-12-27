@@ -98,22 +98,20 @@ async def upload_asset(
     _role_check = Depends(require_role([UserRole.ADMIN]))
 ):
     """Upload asset to project"""
-    # Verify project exists
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    # Upload to Supabase
     storage_service = StorageService()
     file_data = await storage_service.upload_file(file, str(project_id))
     
-    # Create asset record
     asset = Asset(
         project_id=project_id,
         file_url=file_data["file_url"],
+        file_path=file_data["file_path"],  # Add this
         file_name=file_data["file_name"],
         mime_type=file_data["mime_type"],
-        uploaded_by=current_user.id
+        file_size=file_data["file_size"]  # Add this
     )
     db.add(asset)
     db.commit()
