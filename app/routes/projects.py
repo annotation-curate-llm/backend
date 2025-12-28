@@ -89,6 +89,113 @@ def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
     return project
 
+@router.get("/label-config-templates")
+def get_label_config_templates():
+    """Get predefined label configuration templates for different annotation types"""
+    return {
+        "image_classification": {
+            "name": "Image Classification",
+            "description": "Classify images into predefined categories",
+            "category": "classification",
+            "data_type": "image",
+            "config": """<View>
+  <Image name="image" value="$image"/>
+  <Choices name="choice" toName="image">
+    <Choice value="Category1"/>
+    <Choice value="Category2"/>
+    <Choice value="Category3"/>
+  </Choices>
+</View>"""
+        },
+        "text_classification": {
+            "name": "Text Classification",
+            "description": "Classify text into sentiment or categories",
+            "category": "classification",
+            "data_type": "text",
+            "config": """<View>
+  <Text name="text" value="$text"/>
+  <Choices name="sentiment" toName="text">
+    <Choice value="Positive"/>
+    <Choice value="Negative"/>
+    <Choice value="Neutral"/>
+  </Choices>
+</View>"""
+        },
+        "audio_classification": {
+            "name": "Audio Classification",
+            "description": "Classify audio files by emotion or category",
+            "category": "classification",
+            "data_type": "audio",
+            "config": """<View>
+  <Audio name="audio" value="$audio"/>
+  <Choices name="emotion" toName="audio">
+    <Choice value="Happy"/>
+    <Choice value="Sad"/>
+    <Choice value="Angry"/>
+    <Choice value="Neutral"/>
+  </Choices>
+</View>"""
+        },
+        "object_detection": {
+            "name": "Object Detection",
+            "description": "Draw bounding boxes around objects in images",
+            "category": "detection",
+            "data_type": "image",
+            "config": """<View>
+  <Image name="image" value="$image"/>
+  <RectangleLabels name="label" toName="image">
+    <Label value="Person"/>
+    <Label value="Car"/>
+    <Label value="Animal"/>
+    <Label value="Object"/>
+  </RectangleLabels>
+</View>"""
+        },
+        "named_entity_recognition": {
+            "name": "Named Entity Recognition (NER)",
+            "description": "Identify and label entities in text",
+            "category": "ner",
+            "data_type": "text",
+            "config": """<View>
+  <Text name="text" value="$text"/>
+  <Labels name="label" toName="text">
+    <Label value="Person"/>
+    <Label value="Organization"/>
+    <Label value="Location"/>
+    <Label value="Date"/>
+  </Labels>
+</View>"""
+        },
+        "image_segmentation": {
+            "name": "Image Segmentation",
+            "description": "Draw polygons to segment objects in images",
+            "category": "segmentation",
+            "data_type": "image",
+            "config": """<View>
+  <Image name="image" value="$image"/>
+  <PolygonLabels name="label" toName="image">
+    <Label value="Foreground"/>
+    <Label value="Background"/>
+    <Label value="Object"/>
+  </PolygonLabels>
+</View>"""
+        },
+        "video_classification": {
+            "name": "Video Classification",
+            "description": "Classify video content",
+            "category": "classification",
+            "data_type": "video",
+            "config": """<View>
+  <Video name="video" value="$video"/>
+  <Choices name="category" toName="video">
+    <Choice value="Action"/>
+    <Choice value="Comedy"/>
+    <Choice value="Drama"/>
+  </Choices>
+</View>"""
+        }
+    }
+
 @router.post("/{project_id}/assets/upload", status_code=status.HTTP_201_CREATED)
 async def upload_asset(
     project_id: UUID,
