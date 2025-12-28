@@ -8,4 +8,5 @@ __all__ = [
     "annotations",
     "reviews",
     "exports",
+    "dashboard"
 ]
