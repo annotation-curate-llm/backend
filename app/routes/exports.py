@@ -12,6 +12,16 @@ from app.services.export_service import ExportService
 
 router = APIRouter(prefix="/exports", tags=["Exports"])
 
+def process_export_in_background(job_id: str):
+    """Background task wrapper with its own DB session"""
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        export_service = ExportService(db)
+        export_service.process_export(job_id)
+    finally:
+        db.close()
+
 @router.post("/", response_model=ExportJobResponse, status_code=status.HTTP_202_ACCEPTED)
 def create_export_job(
     export_data: ExportJobCreate,
@@ -33,8 +43,7 @@ def create_export_job(
     db.refresh(export_job)
     
     # Trigger background processing
-    export_service = ExportService(db)
-    background_tasks.add_task(export_service.process_export, export_job.id)
+    background_tasks.add_task(process_export_in_background, str(export_job.id))
     
     return export_job
 
