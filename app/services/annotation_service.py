@@ -16,25 +16,38 @@ class AnnotationService:
         annotator_id: UUID
     ) -> Annotation:
         """Create new annotation"""
-        # Verify task exists
+        from app.services.label_studio_service import LabelStudioService
+    
         task = self.db.query(Task).filter(
-            Task.id == annotation_data.task_id
+        Task.id == annotation_data.task_id
         ).first()
-        
+    
         if not task:
             raise ValueError("Task not found")
-        
-        # Create annotation
+    
+        # Create annotation in your DB
         new_annotation = Annotation(
             **annotation_data.model_dump(),
             annotator_id=annotator_id
         )
         self.db.add(new_annotation)
-        
+    
+        # Push to Label Studio if task has LS ID
+        if task.label_studio_task_id:
+            ls_service = LabelStudioService()
+            try:
+                ls_annotation = ls_service.create_annotation(
+                    task_id=task.label_studio_task_id,
+                    result=annotation_data.annotation_data.get("result", [])
+                )
+                new_annotation.label_studio_annotation_id = ls_annotation.get("id")
+            except Exception as e:
+                print(f"Failed to sync to Label Studio: {e}")
+    
         # Update task status
         task.status = TaskStatus.COMPLETED
         task.completed_at = datetime.utcnow()
-        
+    
         self.db.commit()
         self.db.refresh(new_annotation)
         return new_annotation
