@@ -8,7 +8,7 @@ from app.schemas.user import UserCreate, UserResponse
 from app.models.user import User
 from app.core.config import settings
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 security = HTTPBearer()
 
 def create_access_token(user: User) -> str:
@@ -21,7 +21,7 @@ def create_access_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
         "email": user.email,
-        "role": user.role.value,  # ← CRITICAL: Include role in token
+        "role": user.role.value,  
         "exp": expire
     }
     
