@@ -260,3 +260,24 @@ def delete_project(
     db.delete(project)
     db.commit()
     return None
+
+@router.get("/test-ls")
+def test_label_studio():
+    import httpx
+    from app.core.config import settings
+    
+    url = f"{settings.LABEL_STUDIO_URL}/api/projects"
+    headers = {"Authorization": f"Bearer {settings.LABEL_STUDIO_API_KEY}"}
+    
+    try:
+        client = httpx.Client(timeout=30.0)
+        response = client.get(url, headers=headers)
+        return {
+            "status_code": response.status_code,
+            "url": url,
+            "key_first_10": settings.LABEL_STUDIO_API_KEY[:10],
+            "key_last_10": settings.LABEL_STUDIO_API_KEY[-10:],
+            "response": response.json()
+        }
+    except Exception as e:
+        return {"error": str(e), "url": url}

@@ -33,14 +33,21 @@ class TaskService:
                 asset = self.db.query(Asset).filter(
                     Asset.id == task_data.asset_id
                 ).first()
-                
+    
                 if asset:
                     try:
-                        ls_task = self.ls_service.import_task(
-                            project_id=label_studio_project_id,
-                            data={"image": asset.file_url}
+                        # Import the task
+                        self.ls_service.import_task(
+                        project_id=label_studio_project_id,
+                        data={"image": asset.file_url}
                         )
-                        new_task.label_studio_task_id = ls_task.get("id")
+            
+                        # Fetch the actual task ID — import doesn't return it directly
+                        ls_tasks = self.ls_service.get_project_tasks(label_studio_project_id)
+                        if ls_tasks:
+                            # Most recently created task is last
+                            new_task.label_studio_task_id = ls_tasks[-1].get("id")
+                
                     except Exception as ls_error:
                         logger.error(f"Failed to import task to Label Studio: {str(ls_error)}")
                         self.db.rollback()
