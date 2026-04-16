@@ -42,6 +42,19 @@ class LabelStudioService:
         except httpx.HTTPError as e:
             raise Exception(f"Failed to get task: {str(e)}")
     
+    def get_project_tasks(self, project_id: int) -> list:
+        """Get all tasks for a project — used to retrieve task ID after import"""
+        url = f"{self.base_url}/api/tasks?project={project_id}"
+    
+        try:
+            response = self.client.get(url, headers=self.headers)
+            response.raise_for_status()
+            data = response.json()
+            # LS returns {"tasks": [...]} or just [...]
+            return data.get("tasks", data) if isinstance(data, dict) else data
+        except httpx.HTTPError as e:
+            raise Exception(f"Failed to get project tasks: {str(e)}")
+    
     def create_annotation(self, task_id: int, result: list, completion_data: Optional[Dict] = None) -> Dict[str, Any]:
         url = f"{self.base_url}/api/tasks/{task_id}/annotations"
         data = {"result": result, **(completion_data or {})}

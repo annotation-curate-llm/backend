@@ -8,7 +8,10 @@ from app.models.user import User
 from app.models.annotation import Annotation
 from app.models.task import Task, TaskStatus
 from app.schemas.annotation import AnnotationCreate, AnnotationResponse
+from app.services.label_studio_service import LabelStudioService
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/annotations", tags=["Annotations"])
 
 @router.post("/", response_model=AnnotationResponse, status_code=status.HTTP_201_CREATED)
@@ -17,8 +20,7 @@ def create_annotation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create annotation for a task"""
-    # Verify task exists and is assigned to current user
+    """Create annotation for a task and sync to Label Studio"""
     task = db.query(Task).filter(Task.id == annotation_data.task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -26,18 +28,30 @@ def create_annotation(
     if task.assigned_to != current_user.id:
         raise HTTPException(status_code=403, detail="Task not assigned to you")
     
-    # Create annotation
+    # Save to your DB
     new_annotation = Annotation(
         **annotation_data.model_dump(),
         annotator_id=current_user.id
     )
     db.add(new_annotation)
-    
-    # Update task status
     task.status = TaskStatus.COMPLETED
-    
     db.commit()
     db.refresh(new_annotation)
+    
+    # Sync to Label Studio (non-blocking — don't fail if LS is down)
+    if task.label_studio_task_id:
+        try:
+            ls_service = LabelStudioService()
+            ls_service.create_annotation(
+                task_id=task.label_studio_task_id,
+                result=annotation_data.annotation_data.get("result", [])
+            )
+        except Exception as e:
+            # Log but don't fail — DB is source of truth
+            logger.error(f"Failed to sync annotation to Label Studio (task {task.id}): {e}")
+    else:
+        logger.warning(f"Task {task.id} has no label_studio_task_id — skipping LS sync")
+    
     return new_annotation
 
 @router.get("/task/{task_id}", response_model=List[AnnotationResponse])
