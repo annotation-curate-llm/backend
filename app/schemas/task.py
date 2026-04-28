@@ -39,6 +39,7 @@ class AssetInfo(BaseModel):
 
 class TaskWithAsset(TaskResponse):
     asset: AssetInfo
+    label_studio_project_id: Optional[int] = None
     
     class Config:
         from_attributes = True
