@@ -36,17 +36,23 @@ class TaskService:
     
                 if asset:
                     try:
-                        # Import the task
-                        self.ls_service.import_task(
-                        project_id=label_studio_project_id,
-                        data={"image": asset.file_url}
+                        # Import and use response directly — don't fetch all tasks
+                        ls_response = self.ls_service.import_task(
+                            project_id=label_studio_project_id,
+                            data={"image": asset.file_url}
                         )
-            
-                        # Fetch the actual task ID — import doesn't return it directly
-                        ls_tasks = self.ls_service.get_project_tasks(label_studio_project_id)
-                        if ls_tasks:
-                            # Most recently created task is last
-                            new_task.label_studio_task_id = ls_tasks[-1].get("id")
+
+                        # Extract task ID from import response
+                        task_ids = ls_response.get("task_ids") or [
+                            t["id"] for t in ls_response.get("tasks", [])
+                        ]
+
+                        if task_ids:
+                            new_task.label_studio_task_id = task_ids[0]
+                            new_task.label_studio_project_id = label_studio_project_id
+                            logger.info(f"Task {new_task.id} linked to LS task {task_ids[0]}")
+                        else:
+                            raise Exception(f"Label Studio import succeeded but returned no task IDs. Response: {ls_response}")
                 
                     except Exception as ls_error:
                         logger.error(f"Failed to import task to Label Studio: {str(ls_error)}")
@@ -149,10 +155,11 @@ class TaskService:
             raise ValueError("count must be at least 1")
         
         try:
-            # Use SELECT FOR UPDATE to lock rows
+            # Only assign tasks that are properly linked to Label Studio
             tasks = self.db.query(Task).filter(
                 Task.project_id == project_id,
-                Task.status == TaskStatus.UNASSIGNED
+                Task.status == TaskStatus.UNASSIGNED,
+                Task.label_studio_task_id.isnot(None)  # guard added
             ).with_for_update().limit(count).all()
             
             assigned_count = 0
@@ -192,10 +199,11 @@ class TaskService:
                 logger.warning("No active annotators found for auto-assignment")
                 return {}
             
-            # Get unassigned tasks with locking
+            # Only assign tasks properly linked to Label Studio
             unassigned_tasks = self.db.query(Task).filter(
                 Task.project_id == project_id,
-                Task.status == TaskStatus.UNASSIGNED
+                Task.status == TaskStatus.UNASSIGNED,
+                Task.label_studio_task_id.isnot(None)  # guard added
             ).with_for_update().all()
             
             if not unassigned_tasks:
