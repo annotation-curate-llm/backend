@@ -29,6 +29,6 @@ class ReviewResponse(ReviewBase):
 class ReviewWithAnnotation(ReviewResponse):
     task_id: UUID4
     annotator_id: Optional[UUID4] = None
-    annotation_data: dict
+    annotation_data: Optional[dict] = None
     file_url: str
     file_name: str
