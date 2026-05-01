@@ -4,6 +4,7 @@ from sqlalchemy.sql import func
 import uuid
 import enum
 from app.core.database import Base
+from sqlalchemy.orm import relationship
 
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
@@ -23,3 +24,4 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    reviews = relationship("Review", back_populates="reviewer", foreign_keys="[Review.reviewer_id]")
