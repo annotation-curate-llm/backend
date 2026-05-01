@@ -39,12 +39,20 @@ def get_pending_reviews(
 
     response = []
     for review, annotation, task, asset in results:
-        review_dict = ReviewWithAnnotation.model_validate(review).model_dump()
-        review_dict["task_id"] = task.id
-        review_dict["annotator_id"] = annotation.annotator_id
-        review_dict["annotation_data"] = annotation.annotation_data
-        review_dict["file_url"] = asset.file_url
-        review_dict["file_name"] = asset.file_name
+        review_dict = {
+            "id": review.id,
+            "annotation_id": review.annotation_id,
+            "reviewer_id": review.reviewer_id,
+            "status": review.status,
+            "comments": review.comments,
+            "reviewed_at": review.reviewed_at,
+            "created_at": review.created_at,
+            "task_id": task.id,
+            "annotator_id": annotation.annotator_id,
+            "annotation_data": annotation.annotation_data,
+            "file_url": asset.file_url,
+            "file_name": asset.file_name,
+        }
         response.append(ReviewWithAnnotation(**review_dict))
 
     return response
@@ -68,8 +76,6 @@ def create_review(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Find the existing PENDING review and update it
-    # instead of creating a duplicate
     existing_review = db.query(Review).filter(
         Review.annotation_id == review_data.annotation_id,
         Review.status == ReviewStatus.PENDING
@@ -82,7 +88,6 @@ def create_review(
         existing_review.reviewed_at = datetime.utcnow()
         review = existing_review
     else:
-        # Fallback: create new review if no pending one exists
         review = Review(
             annotation_id=review_data.annotation_id,
             reviewer_id=current_user.id,
@@ -92,14 +97,13 @@ def create_review(
         )
         db.add(review)
 
-    # Update task status based on decision
     if review_data.status == ReviewStatus.APPROVED:
-        task.status = TaskStatus.REVIEWED  # ready for export
+        task.status = TaskStatus.REVIEWED
         logger.info(f"Task {task.id} approved by {current_user.id} — ready for export")
 
     elif review_data.status == ReviewStatus.REJECTED:
-        task.status = TaskStatus.ASSIGNED  # back to annotator
-        task.completed_at = None           # reset completion time
+        task.status = TaskStatus.ASSIGNED
+        task.completed_at = None
         logger.info(f"Task {task.id} rejected by {current_user.id} — reassigned to annotator")
 
     db.commit()
@@ -128,12 +132,20 @@ def get_approved_reviews(
 
     response = []
     for review, annotation, task, asset in results:
-        review_dict = ReviewWithAnnotation.model_validate(review).model_dump()
-        review_dict["task_id"] = task.id
-        review_dict["annotator_id"] = annotation.annotator_id
-        review_dict["annotation_data"] = annotation.annotation_data
-        review_dict["file_url"] = asset.file_url
-        review_dict["file_name"] = asset.file_name
+        review_dict = {
+            "id": review.id,
+            "annotation_id": review.annotation_id,
+            "reviewer_id": review.reviewer_id,
+            "status": review.status,
+            "comments": review.comments,
+            "reviewed_at": review.reviewed_at,
+            "created_at": review.created_at,
+            "task_id": task.id,
+            "annotator_id": annotation.annotator_id,
+            "annotation_data": annotation.annotation_data,
+            "file_url": asset.file_url,
+            "file_name": asset.file_name,
+        }
         response.append(ReviewWithAnnotation(**review_dict))
 
     return response
