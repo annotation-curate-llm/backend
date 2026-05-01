@@ -36,23 +36,35 @@ class TaskService:
     
                 if asset:
                     try:
-                        # Import and use response directly — don't fetch all tasks
+                        # Import task to Label Studio
                         ls_response = self.ls_service.import_task(
                             project_id=label_studio_project_id,
                             data={"image": asset.file_url}
                         )
 
-                        # Extract task ID from import response
-                        task_ids = ls_response.get("task_ids") or [
-                            t["id"] for t in ls_response.get("tasks", [])
-                        ]
+                        logger.info(f"LS import response: {ls_response}")
 
-                        if task_ids:
-                            new_task.label_studio_task_id = task_ids[0]
-                            new_task.label_studio_project_id = label_studio_project_id
-                            logger.info(f"Task {new_task.id} linked to LS task {task_ids[0]}")
+                        # This version of LS doesn't return task_ids directly
+                        # Verify import succeeded then find task by matching file URL
+                        if ls_response.get("task_count", 0) > 0:
+                            ls_tasks = self.ls_service.get_project_tasks(label_studio_project_id)
+                            
+                            if ls_tasks:
+                                # Match by file URL to avoid race conditions
+                                matching_task = next(
+                                    (t for t in ls_tasks if t.get("data", {}).get("image") == asset.file_url),
+                                    None
+                                )
+                                if matching_task:
+                                    new_task.label_studio_task_id = matching_task.get("id")
+                                    new_task.label_studio_project_id = label_studio_project_id
+                                    logger.info(f"Task {new_task.id} linked to LS task {matching_task.get('id')}")
+                                else:
+                                    raise Exception(f"Could not find matching task in Label Studio after import. URL: {asset.file_url}")
+                            else:
+                                raise Exception("No tasks found in Label Studio project after import")
                         else:
-                            raise Exception(f"Label Studio import succeeded but returned no task IDs. Response: {ls_response}")
+                            raise Exception(f"Label Studio import failed. Response: {ls_response}")
                 
                     except Exception as ls_error:
                         logger.error(f"Failed to import task to Label Studio: {str(ls_error)}")
