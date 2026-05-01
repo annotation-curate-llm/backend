@@ -10,12 +10,17 @@ from app.models.user import User, UserRole
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, ProjectWithStats
+from app.services.project_service import ProjectService
 from app.services.label_studio_service import LabelStudioService
 from fastapi import UploadFile, File
 from app.services.storage_service import StorageService
 from app.models.asset import Asset
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
+
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project(
@@ -25,32 +30,16 @@ def create_project(
     _admin: User = Depends(require_role([UserRole.ADMIN]))
 ):
     """Create new project (admin only)"""
-    
-    label_studio_project_id = None
-    
-    # Try to create in Label Studio (optional)
     try:
-        ls_service = LabelStudioService()
-        ls_project = ls_service.create_project(
-            title=project_data.name,
-            label_config=project_data.label_config
-        )
-        label_studio_project_id = ls_project.get("id")
+        project_service = ProjectService(db)
+        return project_service.create_project(project_data, current_user.id)
     except Exception as e:
-        # Log the error but continue
-        print(f"Warning: Could not create Label Studio project: {e}")
-        print("Creating project without Label Studio integration")
-    
-    # Create project in database
-    new_project = Project(
-        **project_data.model_dump(),
-        created_by=current_user.id,
-        label_studio_project_id=label_studio_project_id
-    )
-    db.add(new_project)
-    db.commit()
-    db.refresh(new_project)
-    return new_project
+        logger.error(f"Failed to create project: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create project: {str(e)}"
+        )
+
 
 @router.get("/", response_model=List[ProjectWithStats])
 def list_projects(
@@ -77,17 +66,6 @@ def list_projects(
     
     return result
 
-@router.get("/{project_id}", response_model=ProjectResponse)
-def get_project(
-    project_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get project by ID"""
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
 
 @router.get("/label-config-templates")
 def get_label_config_templates():
@@ -196,6 +174,42 @@ def get_label_config_templates():
         }
     }
 
+
+@router.get("/test-ls")
+def test_label_studio():
+    """Test Label Studio connection"""
+    import httpx
+    from app.core.config import settings
+
+    url = f"{settings.LABEL_STUDIO_URL}/api/projects"
+    headers = {"Authorization": f"Token {settings.LABEL_STUDIO_API_KEY}"}  # fixed: Token not Bearer
+
+    try:
+        client = httpx.Client(timeout=60.0)
+        response = client.get(url, headers=headers)
+        return {
+            "status_code": response.status_code,
+            "url": url,
+            "key_first_10": settings.LABEL_STUDIO_API_KEY[:10],
+            "response": response.json()
+        }
+    except Exception as e:
+        return {"error": str(e), "url": url}
+
+
+@router.get("/{project_id}", response_model=ProjectResponse)
+def get_project(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get project by ID"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
 @router.post("/{project_id}/assets/upload", status_code=status.HTTP_201_CREATED)
 async def upload_asset(
     project_id: UUID,
@@ -215,16 +229,21 @@ async def upload_asset(
     asset = Asset(
         project_id=project_id,
         file_url=file_data["file_url"],
-        file_path=file_data["file_path"],  # Add this
+        file_path=file_data["file_path"],
         file_name=file_data["file_name"],
         mime_type=file_data["mime_type"],
-        file_size=file_data["file_size"]  # Add this
+        file_size=file_data["file_size"]
     )
     db.add(asset)
     db.commit()
     db.refresh(asset)
     
-    return {"message": "Asset uploaded", "asset_id": str(asset.id), "file_url": file_data["file_url"]}
+    return {
+        "message": "Asset uploaded",
+        "asset_id": str(asset.id),
+        "file_url": file_data["file_url"]
+    }
+
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
 def update_project(
@@ -246,6 +265,7 @@ def update_project(
     db.refresh(project)
     return project
 
+
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(
     project_id: UUID,
@@ -260,24 +280,3 @@ def delete_project(
     db.delete(project)
     db.commit()
     return None
-
-@router.get("/test-ls")
-def test_label_studio():
-    import httpx
-    from app.core.config import settings
-    
-    url = f"{settings.LABEL_STUDIO_URL}/api/projects"
-    headers = {"Authorization": f"Bearer {settings.LABEL_STUDIO_API_KEY}"}
-    
-    try:
-        client = httpx.Client(timeout=30.0)
-        response = client.get(url, headers=headers)
-        return {
-            "status_code": response.status_code,
-            "url": url,
-            "key_first_10": settings.LABEL_STUDIO_API_KEY[:10],
-            "key_last_10": settings.LABEL_STUDIO_API_KEY[-10:],
-            "response": response.json()
-        }
-    except Exception as e:
-        return {"error": str(e), "url": url}
