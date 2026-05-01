@@ -1,6 +1,9 @@
 import httpx
-from typing import Dict, Any, Optional
+import logging
+from typing import Dict, Any, Optional, List
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 class LabelStudioService:
     def __init__(self):
@@ -9,7 +12,10 @@ class LabelStudioService:
             "Authorization": f"Token {settings.LABEL_STUDIO_API_KEY}",
             "Content-Type": "application/json"
         }
-        self.client = httpx.Client(timeout=30.0)  # Sync client
+        # Increased timeout for Render cold starts
+        self.client = httpx.Client(
+            timeout=httpx.Timeout(60.0, connect=60.0)
+        )
     
     def create_project(self, title: str, label_config: str) -> Dict[str, Any]:
         url = f"{self.base_url}/api/projects"
@@ -17,6 +23,7 @@ class LabelStudioService:
         
         try:
             response = self.client.post(url, json=data, headers=self.headers)
+            logger.info(f"LS create_project status: {response.status_code}")
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
@@ -27,6 +34,7 @@ class LabelStudioService:
         
         try:
             response = self.client.post(url, json=[data], headers=self.headers)
+            logger.info(f"LS import_task status: {response.status_code}, body: {response.text}")
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
@@ -42,15 +50,13 @@ class LabelStudioService:
         except httpx.HTTPError as e:
             raise Exception(f"Failed to get task: {str(e)}")
     
-    def get_project_tasks(self, project_id: int) -> list:
-        """Get all tasks for a project — used to retrieve task ID after import"""
+    def get_project_tasks(self, project_id: int) -> List:
         url = f"{self.base_url}/api/tasks?project={project_id}"
     
         try:
             response = self.client.get(url, headers=self.headers)
             response.raise_for_status()
             data = response.json()
-            # LS returns {"tasks": [...]} or just [...]
             return data.get("tasks", data) if isinstance(data, dict) else data
         except httpx.HTTPError as e:
             raise Exception(f"Failed to get project tasks: {str(e)}")

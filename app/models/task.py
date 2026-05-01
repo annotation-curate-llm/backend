@@ -23,6 +23,7 @@ class Task(Base):
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     status = Column(SQLEnum(TaskStatus), default=TaskStatus.UNASSIGNED)
     label_studio_task_id = Column(Integer, nullable=True)
+    label_studio_project_id = Column(Integer, nullable=True)
     priority = Column(Integer, default=0)
     assigned_at = Column(DateTime(timezone=True))
     started_at = Column(DateTime(timezone=True))
