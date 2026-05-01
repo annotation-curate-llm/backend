@@ -8,11 +8,12 @@ from app.models.user import User
 from app.models.annotation import Annotation
 from app.models.task import Task, TaskStatus
 from app.schemas.annotation import AnnotationCreate, AnnotationResponse
-from app.services.label_studio_service import LabelStudioService
+from app.services.annotation_service import AnnotationService
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/annotations", tags=["Annotations"])
+
 
 @router.post("/", response_model=AnnotationResponse, status_code=status.HTTP_201_CREATED)
 def create_annotation(
@@ -28,31 +29,15 @@ def create_annotation(
     if task.assigned_to != current_user.id:
         raise HTTPException(status_code=403, detail="Task not assigned to you")
     
-    # Save to your DB
-    new_annotation = Annotation(
-        **annotation_data.model_dump(),
-        annotator_id=current_user.id
-    )
-    db.add(new_annotation)
-    task.status = TaskStatus.COMPLETED
-    db.commit()
-    db.refresh(new_annotation)
-    
-    # Sync to Label Studio (non-blocking — don't fail if LS is down)
-    if task.label_studio_task_id:
-        try:
-            ls_service = LabelStudioService()
-            ls_service.create_annotation(
-                task_id=task.label_studio_task_id,
-                result=annotation_data.annotation_data.get("result", [])
-            )
-        except Exception as e:
-            # Log but don't fail — DB is source of truth
-            logger.error(f"Failed to sync annotation to Label Studio (task {task.id}): {e}")
-    else:
-        logger.warning(f"Task {task.id} has no label_studio_task_id — skipping LS sync")
-    
-    return new_annotation
+    try:
+        service = AnnotationService(db)
+        return service.create_annotation(annotation_data, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to create annotation: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create annotation")
+
 
 @router.get("/task/{task_id}", response_model=List[AnnotationResponse])
 def get_task_annotations(
@@ -63,6 +48,7 @@ def get_task_annotations(
     """Get all annotations for a task"""
     annotations = db.query(Annotation).filter(Annotation.task_id == task_id).all()
     return annotations
+
 
 @router.get("/{annotation_id}", response_model=AnnotationResponse)
 def get_annotation(
