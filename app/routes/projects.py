@@ -56,12 +56,17 @@ def list_projects(
             Task.project_id == project.id,
             Task.status == TaskStatus.COMPLETED
         ).scalar()
+        reviewed = db.query(func.count(Task.id)).filter(  # ADD THIS
+            Task.project_id == project.id,
+            Task.status == TaskStatus.REVIEWED
+        ).scalar()
         pending = total - completed
         
         project_dict = ProjectWithStats.model_validate(project).model_dump()
         project_dict["total_tasks"] = total
         project_dict["completed_tasks"] = completed
         project_dict["pending_tasks"] = pending
+        project_dict["reviewed_tasks"] = reviewed or 0
         result.append(ProjectWithStats(**project_dict))
     
     return result

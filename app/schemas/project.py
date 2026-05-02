@@ -33,3 +33,4 @@ class ProjectWithStats(ProjectResponse):
     total_tasks: int = 0
     completed_tasks: int = 0
     pending_tasks: int = 0
+    reviewed_tasks: int = 0
