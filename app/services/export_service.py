@@ -20,13 +20,12 @@ class ExportService:
         job = self.db.query(ExportJob).filter(ExportJob.id == job_id).first()
         if not job:
             return
-        
+    
         try:
-            # Update status
             job.status = ExportStatus.PROCESSING
             self.db.commit()
-            
-            # Fetch approved annotations
+        
+            # Fetch approved annotations only
             annotations = self.db.query(Annotation).join(
                 Review
             ).join(
@@ -37,7 +36,10 @@ class ExportService:
                 Review.status == ReviewStatus.APPROVED,
                 Task.project_id == job.project_id
             ).all()
-            
+        
+            if not annotations:
+                raise Exception("No approved annotations found for this project")
+        
             # Build export based on format
             if job.export_format == ExportFormat.JSON:
                 data = self.build_json_export(annotations)
@@ -51,27 +53,33 @@ class ExportService:
                 data = self.build_csv_export(annotations)
             else:
                 raise ValueError(f"Unsupported format: {job.export_format}")
-            
+        
             # Create ZIP file
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                zip_file.writestr(f'export.{job.export_format.value}', data)
-            
+                zip_file.writestr(f'export.{job.export_format.value.lower()}', data)
+        
+            # Upload to Supabase
             zip_buffer.seek(0)
-            
-            # Upload to storage
             file_path = f"exports/{job.project_id}/{job.id}.zip"
-            # TODO: Implement upload to Supabase Storage
-            # file_url = self.storage_service.upload_bytes(file_path, zip_buffer.read())
-            file_url = f"https://storage.example.com/{file_path}"  # Placeholder
-            
-            # Update job
+
+            try:
+                file_url = self.storage_service.upload_bytes(
+                    bucket="exports",
+                    path=file_path,
+                    data=zip_buffer.read(),
+                    content_type="application/zip"
+                )
+            except Exception as e:
+                raise Exception(f"Failed to upload export file: {str(e)}")
+        
+            # Update job as completed
             job.status = ExportStatus.COMPLETED
             job.file_url = file_url
             job.total_annotations = len(annotations)
             job.completed_at = datetime.utcnow()
             self.db.commit()
-            
+        
         except Exception as e:
             job.status = ExportStatus.FAILED
             job.error_message = str(e)
