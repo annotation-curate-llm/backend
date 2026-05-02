@@ -9,7 +9,9 @@ from app.models.annotation import Annotation
 from app.models.task import Task, TaskStatus
 from app.schemas.annotation import AnnotationCreate, AnnotationResponse
 from app.services.annotation_service import AnnotationService
+from app.services.label_studio_service import LabelStudioService
 import logging
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/annotations", tags=["Annotations"])
@@ -38,6 +40,30 @@ def create_annotation(
         logger.error(f"Failed to create annotation: {e}")
         raise HTTPException(status_code=500, detail="Failed to create annotation")
 
+@router.get("/ls-result/{ls_task_id}")
+def get_ls_annotation_result(
+    ls_task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Fetch annotation result from Label Studio for a task"""
+    try:
+        ls_service = LabelStudioService()
+        ls_task = ls_service.get_task(ls_task_id)
+
+        annotations = ls_task.get("annotations", [])
+        if annotations:
+            latest = annotations[-1]
+            return {
+                "result": {
+                    "result": latest.get("result", []),
+                    "label_studio_annotation_id": latest.get("id")
+                }
+            }
+        return {"result": {"result": [], "note": "No annotation found in Label Studio"}}
+    except Exception as e:
+        logger.error(f"Failed to fetch LS annotation: {e}")
+        return {"result": {"result": [], "note": "Submitted via Label Studio"}}
 
 @router.get("/task/{task_id}", response_model=List[AnnotationResponse])
 def get_task_annotations(
