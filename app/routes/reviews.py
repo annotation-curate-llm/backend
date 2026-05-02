@@ -162,3 +162,24 @@ def get_review(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     return review
+
+
+@router.get("/approved/count")
+def get_approved_count(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _role_check = Depends(require_role([UserRole.ADMIN]))
+):
+    """Get count of approved annotations ready for export"""
+    from sqlalchemy import func
+    count = db.query(func.count(Review.id)).join(
+        Annotation, Review.annotation_id == Annotation.id
+    ).join(
+        Task, Annotation.task_id == Task.id
+    ).filter(
+        Review.status == ReviewStatus.APPROVED,
+        Task.project_id == project_id
+    ).scalar()
+    
+    return {"project_id": str(project_id), "approved_count": count or 0}

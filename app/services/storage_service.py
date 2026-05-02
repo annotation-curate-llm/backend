@@ -47,3 +47,18 @@ class StorageService:
         """Delete file from Supabase storage"""
         response = self.supabase.storage.from_(self.bucket).remove([file_path])
         return True
+    def upload_bytes(
+    self,
+        bucket: str,
+        path: str,
+        data: bytes,
+        content_type: str = "application/octet-stream"
+    ) -> str:
+        """Upload raw bytes to Supabase storage — used for exports"""
+        self.supabase.storage.from_(bucket).upload(
+            path,
+            data,
+            {"content-type": content_type}
+        )
+        public_url = self.supabase.storage.from_(bucket).get_public_url(path)
+        return public_url
