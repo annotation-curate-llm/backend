@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
-
+    APP_URL: str = Field(..., description="Backend public URL")
     # Database
     DATABASE_URL: str = Field(..., description="PostgreSQL database URL")
 

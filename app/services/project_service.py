@@ -7,6 +7,7 @@ from app.services.label_studio_service import LabelStudioService
 from typing import Optional, List, Dict
 from uuid import UUID
 from datetime import datetime
+from app.core.config import settings
 
 class ProjectService:
     def __init__(self, db: Session):
@@ -110,3 +111,28 @@ class ProjectService:
             "reviewed_tasks": reviewed_tasks or 0,
             "completion_percentage": (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
         }
+    
+    def create_project(self, project_data: ProjectCreate, user_id: UUID) -> Project:
+        # Create in Label Studio
+        ls_project = self.ls_service.create_project(
+            title=project_data.name,
+            label_config=project_data.label_config
+        )
+
+        # Auto-add webhook to this project
+        webhook_url = f"{settings.APP_URL}/webhooks/annotation-complete"
+        self.ls_service.create_webhook(
+            project_id=ls_project.get("id"),
+            url=webhook_url
+        )
+
+        # Create in DB
+        new_project = Project(
+            **project_data.model_dump(),
+            created_by=user_id,
+            label_studio_project_id=ls_project.get("id")
+        )
+        self.db.add(new_project)
+        self.db.commit()
+        self.db.refresh(new_project)
+        return new_project  

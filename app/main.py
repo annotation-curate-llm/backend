@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routes import auth, users, projects, tasks, annotations, reviews, exports, dashboard
 from app.core.database import engine, Base
+from app.routes.webhooks import router as webhooks_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +32,7 @@ app.include_router(annotations.router)
 app.include_router(reviews.router)
 app.include_router(exports.router)
 app.include_router(dashboard.router)
+app.include_router(webhooks_router)
 
 @app.get("/")
 def root():
