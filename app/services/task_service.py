@@ -37,9 +37,18 @@ class TaskService:
                 if asset:
                     try:
                         # Import task to Label Studio
+                        if asset.mime_type and asset.mime_type.startswith("audio/"):
+                            ls_data = {"audio": asset.file_url}
+                        elif asset.mime_type == "text/plain":
+                            # For text files, read content from storage
+                            ls_data = {"text": asset.text_content or asset.file_url}
+                        else:
+                            # Default to image
+                            ls_data = {"image": asset.file_url}
+
                         ls_response = self.ls_service.import_task(
                             project_id=label_studio_project_id,
-                            data={"image": asset.file_url}
+                            data=ls_data
                         )
 
                         logger.info(f"LS import response: {ls_response}")
