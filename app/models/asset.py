@@ -16,6 +16,7 @@ class Asset(Base):
     file_url = Column(Text, nullable=False)
     mime_type = Column(String(100))
     file_size = Column(Integer)
+    text_content = Column(Text, nullable=True)
     asset_metadata = Column(JSONB)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

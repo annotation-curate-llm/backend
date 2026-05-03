@@ -12,35 +12,34 @@ class StorageService:
         )
         self.bucket = settings.STORAGE_BUCKET
     
-    async def upload_file(
-        self, 
-        file: UploadFile,
-        project_id: str
-    ) -> Dict[str, str]:
-        """Upload file to Supabase storage"""
-        # Generate unique filename
-        file_ext = file.filename.split(".")[-1]
+    async def upload_file(self, file: UploadFile, project_id: str) -> Dict[str, str]:
+        file_ext = file.filename.split(".")[-1].lower()
         unique_filename = f"{project_id}/{uuid.uuid4()}.{file_ext}"
-        
-        # Read file content
         content = await file.read()
-        
-        # Upload to Supabase
+
         response = self.supabase.storage.from_(self.bucket).upload(
             unique_filename,
             content,
             {"content-type": file.content_type}
         )
-        
-        # Get public URL
+
         public_url = self.supabase.storage.from_(self.bucket).get_public_url(unique_filename)
-        
+
+        # For text files, also read content directly
+        text_content = None
+        if file.content_type == "text/plain":
+            try:
+                text_content = content.decode("utf-8")
+            except Exception:
+                text_content = None
+
         return {
             "file_path": unique_filename,
             "file_url": public_url,
             "file_name": file.filename,
             "mime_type": file.content_type,
-            "file_size": len(content)
+            "file_size": len(content),
+            "text_content": text_content  # ADD THIS
         }
     
     def delete_file(self, file_path: str) -> bool:

@@ -237,7 +237,8 @@ async def upload_asset(
         file_path=file_data["file_path"],
         file_name=file_data["file_name"],
         mime_type=file_data["mime_type"],
-        file_size=file_data["file_size"]
+        file_size=file_data["file_size"],
+        text_content=file_data.get("text_content")
     )
     db.add(asset)
     db.commit()
