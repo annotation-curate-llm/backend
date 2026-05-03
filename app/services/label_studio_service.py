@@ -72,5 +72,24 @@ class LabelStudioService:
         except httpx.HTTPError as e:
             raise Exception(f"Failed to create annotation: {str(e)}")
     
+    def create_webhook(self, project_id: int, url: str) -> Dict[str, Any]:
+        """Auto-add webhook to a Label Studio project"""
+        webhook_url = f"{self.base_url}/api/webhooks"
+        data = {
+            "project": project_id,
+            "url": url,
+            "send_payload": True,
+            "send_for_all_actions": False,
+            "actions": ["ANNOTATION_CREATED", "ANNOTATION_UPDATED"]
+        }
+        try:
+            response = self.client.post(webhook_url, json=data, headers=self.headers)
+            logger.info(f"Webhook created for project {project_id}: {response.status_code}")
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.warning(f"Failed to create webhook for project {project_id}: {e}")
+            return {}
+    
     def close(self):
         self.client.close()
