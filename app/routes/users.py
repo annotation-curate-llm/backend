@@ -32,19 +32,31 @@ def update_user(
     user_id: str,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role([UserRole.ADMIN])) 
+    current_user: User = Depends(get_current_user)  # authenticated user
 ):
-    """Update user (admin only)"""
+    """Update user — admin can update anyone, users can update themselves"""
+    
+    # Allow if admin OR updating own profile
+    if current_user.role != UserRole.ADMIN and str(current_user.id) != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only update your own profile"
+        )
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Optional: Track who made the change
-    # user.updated_by = current_user.id
-    
+
+    # Non-admins cannot change their own role
+    if current_user.role != UserRole.ADMIN and 'role' in user_update.model_dump(exclude_unset=True):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins can change roles"
+        )
+
     for key, value in user_update.model_dump(exclude_unset=True).items():
         setattr(user, key, value)
-    
+
     db.commit()
     db.refresh(user)
     return user
